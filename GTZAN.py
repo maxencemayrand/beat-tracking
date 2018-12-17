@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import jams
 from torch.utils.data import Dataset
 
 gtzan_path = './data/GTZAN/'
@@ -24,6 +25,10 @@ def filename_rhythm(style, number):
 
 def filename_spec(style, number):
     return f'{specs_path}{filename(style, number)}.npy'
+
+def load_beats(s, n):
+    df = jams.load(filename_rhythm(s, n))['annotations'][0].to_dataframe()
+    return df['time'].values
 
 def loadGTZAN(s, n):
     spec = np.load(filename_spec(s, n))
