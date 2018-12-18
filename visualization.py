@@ -56,8 +56,14 @@ def confusion(tn, fp, fn, tp):
     print(f'| tp: {tp:{n}} | fp: {fp:{n}} |')
     print(f'| fn: {fn:{n}} | tn: {tn:{n}} |')
     print(" " + (2 * n + 13) * "-")
-    precision = tp / (tp + fp)
-    recall    = tp / (tp + fn)
+    if tp + fp != 0:
+        precision = tp / (tp + fp)
+    else:
+        precision = 0
+    if tp + fn != 0:
+        recall = tp / (tp + fn)
+    else:
+        recall = 0
     accuracy  = (tp + tn) / (tp + tn + fp + fn)
     print(f'Precision: {precision:.4f}')
     print(f'   Recall: {recall:.4f}')
