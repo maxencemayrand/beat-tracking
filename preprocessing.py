@@ -11,9 +11,8 @@ def get_spec(file):
             hop_length=hl,
             fmin=fm,
             n_mels=nb,
-            htk=True
+            htk=htk
             ).astype(np.float32)
-    spec = spec.T
     spec = librosa.power_to_db(spec)
     return spec
 
