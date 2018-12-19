@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from constants import *
 
-def get_spec(file):
-    wav = librosa.load(file, sr)[0]
+def get_spec(wav_file):
+    wav = librosa.load(wav_file, sr)[0]
     spec = librosa.feature.melspectrogram(
             wav,
             sr=sr,
@@ -18,7 +18,11 @@ def get_spec(file):
 
 def get_onsets(spec, beats_times):
     onset_envelope = librosa.onset.onset_strength(S=spec)
-    onsets = librosa.onset.onset_detect(onset_envelope=onset_envelope)
+    onsets = librosa.onset.onset_detect(
+                onset_envelope=onset_envelope, 
+                pre_max=pre_max, 
+                post_max=post_max,
+                delta=delta)
     onsets_times = librosa.frames_to_time(onsets, sr, hl)
     dist = np.min(np.abs(onsets_times[:, np.newaxis] - beats_times), axis=1)
     onsets_selected = onsets[dist < delta]
@@ -26,3 +30,34 @@ def get_onsets(spec, beats_times):
     df['onsets'] = onsets
     df['isbeat'] = (dist < delta).astype(np.int)
     return df
+
+def get_onsets_no_repeat(spec, beats, dt=dt):
+    onset_envelope = librosa.onset.onset_strength(S=spec)
+    onsets = librosa.onset.onset_detect(
+                onset_envelope=onset_envelope, 
+                pre_max=pre_max, 
+                post_max=post_max,
+                delta=delta)
+    onsets_times = librosa.frames_to_time(onsets, sr, hl)
+    
+    closests_idx = np.argmin(np.abs(beats[:, np.newaxis] - onsets_times), axis=1)
+    closests = onsets_times[closests_idx]
+    selected_idx = closests_idx[np.abs(closests - beats) < dt]
+    
+    isbeat = np.zeros_like(onsets)
+    isbeat[selected_idx] = 1
+    
+    return onsets, isbeat
+    
+def save_onsets(onsets, isbeat, file):
+        df = pd.DataFrame()
+        df['onsets'] = onsets
+        df['isbeat'] = isbeat
+        df.to_csv(file, index=False)
+    
+    
+    
+    
+    
+    
+    

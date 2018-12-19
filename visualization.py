@@ -3,7 +3,7 @@ import librosa
 import numpy as np
 from constants import *
 
-def showdata(spec, onsets, isbeat, beats, duration=5, offset=None):
+def showdata(spec, onsets, isbeat, beats, duration=10, offset=None):
     onsets_times = librosa.frames_to_time(onsets, sr, hl)
 
     onsets_selected = onsets[isbeat == 1]
