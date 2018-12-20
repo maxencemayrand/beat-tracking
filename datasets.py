@@ -15,7 +15,7 @@ class BeatTrackingDataset(Dataset):
         self.onsets_path = path + 'onsets/'
 
         self.sample_length = sample_length
-        self.nb_frames_per_sample = librosa.time_to_frames(self.sample_length, sr, hl)
+        self.wav_length = librosa.time_to_samples(self.sample_length, sr)
         self.transform = transform
         
     def __len__(self):
@@ -41,6 +41,14 @@ class BeatTrackingDataset(Dataset):
     
     def get_wav(self, i):
         wav = librosa.load(self.wav_file(i), sr=sr, offset=self.offset(i), duration=self.sample_length)[0]
+        
+        # The next part is necessary, for example, for BALLROOM's 'Albums-Step_By_Step-16.wav' which is < 30s.
+        if len(wav) != self.wav_length:
+            z = np.zeros(self.wav_length)
+            m = min(len(wav), self.wav_length)
+            z[:m] = wav[:m]
+            wav = z
+        
         return wav
 
     def spec_file(self, i):
