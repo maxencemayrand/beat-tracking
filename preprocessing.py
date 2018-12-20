@@ -3,8 +3,7 @@ import numpy as np
 import pandas as pd
 from constants import *
 
-def get_spec(wav_file):
-    wav = librosa.load(wav_file, sr)[0]
+def get_spec(wav):
     spec = librosa.feature.melspectrogram(
             wav,
             sr=sr,
@@ -31,7 +30,7 @@ def get_onsets(spec, beats_times):
     df['isbeat'] = (dist < delta).astype(np.int)
     return df
 
-def get_onsets_no_repeat(spec, beats, dt=dt):
+def get_onsets_from_beats(spec, beats, dt=dt):
     onset_envelope = librosa.onset.onset_strength(S=spec)
     onsets = librosa.onset.onset_detect(
                 onset_envelope=onset_envelope, 
@@ -49,14 +48,12 @@ def get_onsets_no_repeat(spec, beats, dt=dt):
     
     return onsets, isbeat
     
-def save_onsets(onsets, isbeat, file):
+def save_onsets(file, onsets, isbeat):
         df = pd.DataFrame()
         df['onsets'] = onsets
         df['isbeat'] = isbeat
         df.to_csv(file, index=False)
-    
-    
-    
+
     
     
     
