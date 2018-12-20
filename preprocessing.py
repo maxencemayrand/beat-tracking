@@ -53,8 +53,3 @@ def save_onsets(file, onsets, isbeat):
         df['onsets'] = onsets
         df['isbeat'] = isbeat
         df.to_csv(file, index=False)
-
-    
-    
-    
-    
