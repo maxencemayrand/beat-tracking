@@ -144,13 +144,13 @@ class BALLROOM(BeatTrackingDataset):
         return self.nb_files * self.nb_samples_per_file
 
     def filename(self, i):
-        return self.names[i]
+        return self.names[i // self.nb_samples_per_file]
     
     def sample_number(self, i):
         return i % self.nb_samples_per_file
     
     def wav_file(self, i):
-        return self.wavs_files[i]
+        return self.wavs_files[i // self.nb_samples_per_file]
 
     def annotation_file(self, i):
         return f'{self.annotations_path}{self.filename(i)}.beats'
