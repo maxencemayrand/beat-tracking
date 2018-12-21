@@ -65,8 +65,10 @@ class BeatTrackingDataset(Dataset):
         beats = beats[mask] - offset
         return beats
         
-    def precompute(self):
-        for i in range(len(self)):
+    def precompute(self, idxs=None):
+        if idxs == None:
+            idxs = range(len(self))
+        for j, i in enumerate(idxs):
             spec = preprocessing.get_spec(self.get_wav(i))
             np.save(self.spec_file(i), spec)
 
@@ -74,7 +76,7 @@ class BeatTrackingDataset(Dataset):
             onsets, isbeat = preprocessing.get_onsets_from_beats(spec, beats)
             preprocessing.save_onsets(self.onset_file(i), onsets, isbeat)
 
-            print(f'{100*(i+1)/len(self):6.2f}% | {self.filename(i)}.{self.sample_number(i)}')
+            print(f'{100*(j+1)/len(idxs):6.2f}% | {self.filename(i)}.{self.sample_number(i)}')
     
     def __getitem__(self, i):
         spec = np.load(self.spec_file(i))
@@ -169,3 +171,5 @@ class BALLROOM(BeatTrackingDataset):
         for k in range(len(lines)):
             beats[k] = float(lines[k].split()[0])
         return beats
+
+    
