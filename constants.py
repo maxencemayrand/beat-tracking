@@ -6,6 +6,9 @@ htk = False   #
 dt = 0.05     # maximum distance between an onset and a beat
 
 # Peak pick parameters
-pre_max = 3
+pre_max  = 3
 post_max = 4
-delta = 0.03
+pre_avg  = 8
+post_avg = 9
+wait     = 2
+delta    = 0.03

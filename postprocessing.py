@@ -2,6 +2,7 @@ import numpy as np
 from constants import *
 import librosa
 import matplotlib.pyplot as plt
+import preprocessing
 
 def bpm_estimation(onset_env, max_dev=dt, show_plot=True):
     times = librosa.frames_to_time(np.argwhere(onset_env == 1).flatten(), sr, hl)
@@ -22,7 +23,6 @@ def bpm_estimation(onset_env, max_dev=dt, show_plot=True):
 
 def ground_truth_bpm(beats):
     return 60 / (beats[1:] - beats[:-1]).mean()
-
 
 def beat_tracker(beats_frames, max_frame, bpm, tightness):
     fft_res = sr / hl
@@ -45,3 +45,23 @@ def beat_tracker(beats_frames, max_frame, bpm, tightness):
     beats = np.array(beats[::-1], dtype=int)
 
     return beats
+
+def correct_beats(onsets, beats):
+    bpm = ground_truth_bpm(beats)
+    onsets_times = librosa.frames_to_time(onsets, sr, hl)
+    selected_idxs = preprocessing.select_onsets(onsets_times, beats)
+    selected_onsets = onsets[selected_idxs]
+    selected_onsets_times = onsets_times[selected_idxs]
+    
+    corrected_beats = beat_tracker(selected_onsets, onsets.max() + 10, bpm, 500)
+    corrected_beats_times = librosa.frames_to_time(corrected_beats, sr, hl)
+    
+    return corrected_beats_times
+
+
+
+
+
+
+
+

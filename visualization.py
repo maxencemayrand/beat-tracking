@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import librosa
 import numpy as np
 from constants import *
+from beat_tracking_rnn import measures
 
 def showdata(spec, onsets, isbeat, beats, duration=10, offset=None):
     onsets_times = librosa.frames_to_time(onsets, sr, hl)
@@ -24,7 +25,7 @@ def showdata(spec, onsets, isbeat, beats, duration=10, offset=None):
     plt.plot(times, onset_envelope)
     plt.vlines(onsets_times, 0, 1, color='b', linestyles='--', alpha=0.75, label='Onsets')
     plt.vlines(onsets_selected_times, 0.7, 1, color='r', linestyles='-', label='Onsets selected')
-    plt.vlines(beats, 1, 1.3, color='g', label='Beats recorded')
+    plt.vlines(beats, 1, 1.3, color='g', label='Ground truth')
     plt.ylim(0, 1.3)
     plt.xlim(offset, offset + duration)
     plt.legend(frameon=True, framealpha=0.75, bbox_to_anchor=(1.15, 1));
@@ -56,18 +57,11 @@ def confusion(tn, fp, fn, tp):
     print(f'| tp: {tp:{n}} | fp: {fp:{n}} |')
     print(f'| fn: {fn:{n}} | tn: {tn:{n}} |')
     print(" " + (2 * n + 13) * "-")
-    if tp + fp != 0:
-        precision = tp / (tp + fp)
-    else:
-        precision = 0
-    if tp + fn != 0:
-        recall = tp / (tp + fn)
-    else:
-        recall = 0
-    accuracy  = (tp + tn) / (tp + tn + fp + fn)
-    print(f'Precision: {precision:.4f}')
-    print(f'   Recall: {recall:.4f}')
-    print(f' Accuracy: {accuracy:.4f}')
+    a, p, r, F = measures(tn, fp, fn, tp)
+    print(f' Accuracy: {a:.4f}')
+    print(f'Precision: {p:.4f}')
+    print(f'   Recall: {r:.4f}')
+    print(f'F-measure: {F:.4f}')
     
     
     

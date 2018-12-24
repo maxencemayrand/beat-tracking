@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import DataLoader
 import numpy as np
+import time
+import datetime
 from constants import *
 
 class BeatTracker(nn.Module):
@@ -55,45 +58,54 @@ class BeatTracker(nn.Module):
             loss /= len(dataloader)
         return loss
     
-    def learn(self, spec, onsets, isbeat):
+    def learn(self, specs, onsets, isbeat):
         self.optimizer.zero_grad()
-        output = self(spec)
+        output = self(specs)
         output = output[onsets == 1]
         target = isbeat[onsets == 1]
         loss = self.loss_function(output, target)
         loss.backward()
         self.optimizer.step()
         
-        predic = torch.argmax(output, dim=1)
-        accuracy = torch.sum(predic == target).item() / predic.shape.numel()
-        
-        return loss.item(), accuracy
+        with torch.no_grad():
+            predic = torch.argmax(output, dim=1)
+            tn = torch.sum((predic == 0) & (target == 0)).item()
+            fp = torch.sum((predic == 1) & (target == 0)).item()
+            fn = torch.sum((predic == 0) & (target == 1)).item()
+            tp = torch.sum((predic == 1) & (target == 1)).item()
+            loss = loss.item()
+        return tn, fp, fn, tp, loss
     
     def fit(self, dataset, validset, batch_size=1, epochs=1):
         len_dataloader = -(-len(dataset) // batch_size)  # quick ceiling function
-        loss_hist = np.zeros((epochs, len_dataloader))
-        accu_hist = np.zeros((epochs, len_dataloader))
-        valid_hist= np.zeros(epochs)
+        train_hist = np.zeros((epochs, len_dataloader, 5))
+        valid_hist = np.zeros((epochs, 5))
         for e in range(epochs):
             start = time.time()
-            
             dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
             for i, (spec, onsets, isbeat) in enumerate(dataloader):
-                loss, accuracy = self.learn(spec, onsets, isbeat)
-                loss_hist[e, i] = loss
-                accu_hist[e, i] = accuracy
+                tn, fp, fn, tp, loss = self.learn(spec, onsets, isbeat)
+                train_hist[e, i] = np.array([tn, fp, fn, tp, loss])
             
-            valid_hist[e] = self.loss_from_dataset(validset)
+            vtn, vfp, vfn, vtp, vloss = self.evaluate_from_dataset(validset)
+            valid_hist[e] = np.array([vtn, vfp, vfn, vtp, vloss])
+            va, vp, vr, vF = measures(vtn, vfp, vfn, vtp)
             
+            ttn, tfp, tfn, ttp = tuple(np.sum(train_hist[e, :, :4], axis=1))
+            loss = np.mean(train_hist[e, :, 4])
+            a, p, r, F = measures(ttn, tfp, tfn, ttp)
+                
             end = time.time()
             t = end - start
+            time_per_epoch = str(datetime.timedelta(seconds=int(t)))
             eta = str(datetime.timedelta(seconds=int(t * (epochs - e - 1))))
-            print(f'| Epoch: {e + 1:{len(str(epochs))}} | ', end='')
-            print(f'Loss: {np.mean(loss_hist[e]):7.4f} | ', end='')
-            print(f'Valid loss: {valid_hist[e]:7.4f} | ', end='')
-            print(f'Accuracy: {np.mean(accu_hist[e]):5.4f} | ', end='')
-            print(f'{t / len(dataloader):.2f} s/b | Eta: {eta} |')
-        return loss_hist, accu_hist, valid_hist
+            print(f'| Epoch {e + 1:{len(str(epochs))}} | ', end='')
+            print(f'TL: {loss:7.4f} | ', end='')
+            print(f'VL: {vloss:7.4f} | ', end='')
+            print(f'TF: {F:5.4f} | ', end='')
+            print(f'VF: {vF:5.4f} | ', end='')
+            print(f'{t / len(dataloader):.2f} s/b | {time_per_epoch} | ETA: {eta} |')
+        return train_hist, valid_hist
     
     def predict(self, specs, onsets):
         """So far only works if batch_size = 1"""
@@ -113,12 +125,14 @@ class BeatTracker(nn.Module):
             output = output[onsets == 1]
             target = isbeat[onsets == 1]
             predic = torch.argmax(output, dim=1)
-            
+                    
             tn = torch.sum((predic == 0) & (target == 0)).item()
             fp = torch.sum((predic == 1) & (target == 0)).item()
             fn = torch.sum((predic == 0) & (target == 1)).item()
             tp = torch.sum((predic == 1) & (target == 1)).item()
-        return tn, fp, fn, tp
+            loss = self.loss_function(output, target)
+
+        return tn, fp, fn, tp, loss
     
     def evaluate_from_dataset(self, dataset, batch_size=16):
         dataloader = DataLoader(dataset, batch_size=batch_size)
@@ -126,13 +140,16 @@ class BeatTracker(nn.Module):
         tfp = 0
         tfn = 0
         ttp = 0
+        tloss = 0
         for specs, onsets, isbeat in dataloader:
-            tn, fp, fn, tp = self.evaluate(specs, onsets, isbeat)
+            tn, fp, fn, tp, loss = self.evaluate(specs, onsets, isbeat)
             ttn += tn
             tfp += fp
             tfn += fn
             ttp += tp
-        return ttn, tfp, tfn, ttp
+            tloss += loss
+        tloss /= len(dataloader)
+        return ttn, tfp, tfn, ttp, tloss
     
     def freeze(self):
         for p in self.parameters():
@@ -162,8 +179,16 @@ class ToTensor(object):
         
         return spec, onsets, isbeat
 
-
     
-    
-    
+def measures(tn, fp, fn, tp):
+    a = (tp + tn) / (tn + fp + fn + tp) # accuracy
+    if tp + fp != 0:
+        p = tp / (tp + fp)      # precision
+        r = tp / (tp + fn)      # recall
+        F = 2 * p * r / (p + r) # F-measure
+    else:
+        p = 0
+        r = 0
+        F = 0
+    return a, p, r, F
     
