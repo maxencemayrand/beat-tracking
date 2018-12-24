@@ -91,7 +91,7 @@ class BeatTracker(nn.Module):
             valid_hist[e] = np.array([vtn, vfp, vfn, vtp, vloss])
             va, vp, vr, vF = measures(vtn, vfp, vfn, vtp)
             
-            ttn, tfp, tfn, ttp = tuple(np.sum(train_hist[e, :, :4], axis=1))
+            ttn, tfp, tfn, ttp = tuple(np.sum(train_hist[e, :, :4], axis=0))
             loss = np.mean(train_hist[e, :, 4])
             a, p, r, F = measures(ttn, tfp, tfn, ttp)
                 
