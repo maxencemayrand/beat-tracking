@@ -100,10 +100,12 @@ class BeatTracker(nn.Module):
             time_per_epoch = str(datetime.timedelta(seconds=int(t)))
             eta = str(datetime.timedelta(seconds=int(t * (epochs - e - 1))))
             print(f'| Epoch {e + 1:{len(str(epochs))}} | ', end='')
-            print(f'TL: {loss:7.4f} | ', end='')
-            print(f'VL: {vloss:7.4f} | ', end='')
-            print(f'TF: {F:5.4f} | ', end='')
-            print(f'VF: {vF:5.4f} | ', end='')
+            print(f'TL: {loss:5.3f} | ', end='')
+            print(f'VL: {vloss:5.3f} | ', end='')
+            print(f'TF: {F:.3f} | ', end='')
+            print(f'VF: {vF:.3f} | ', end='')
+            print(f'TA: {a:.3f} | ', end='')
+            print(f'VA: {va:.3f} | ', end='')
             print(f'{t / len(dataloader):.2f} s/b | {time_per_epoch} | ETA: {eta} |')
         return train_hist, valid_hist
     
