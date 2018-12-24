@@ -185,7 +185,10 @@ def measures(tn, fp, fn, tp):
     if tp + fp != 0:
         p = tp / (tp + fp)      # precision
         r = tp / (tp + fn)      # recall
-        F = 2 * p * r / (p + r) # F-measure
+        if tp != 0:
+            F = 2 * p * r / (p + r) # F-measure
+        else:
+            F = 0
     else:
         p = 0
         r = 0
