@@ -101,7 +101,7 @@ class BeatFinder(nn.Module):
             t = end - start
             time_per_epoch = str(datetime.timedelta(seconds=int(t)))
             eta = str(datetime.timedelta(seconds=int(t * (epochs - e - 1))))
-            print(f'| Epoch {e + 1:{len(str(epochs))}} | ', end='')
+            print(f'| {e + 1:{len(str(epochs))}} | ', end='')
             print(f'TL: {loss:5.3f} | ', end='')
             print(f'VL: {vloss:5.3f} | ', end='')
             print(f'TF: {F:.3f} | ', end='')
