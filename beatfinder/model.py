@@ -95,7 +95,7 @@ class BeatFinder(nn.Module):
             
             ttn, tfp, tfn, ttp = tuple(np.sum(train_hist[e, :, :4], axis=0))
             loss = np.mean(train_hist[e, :, 4])
-            a, p, r, F = measures(ttn, tfp, tfn, ttp)
+            a, p, r, F = utils.measures(ttn, tfp, tfn, ttp)
                 
             end = time.time()
             t = end - start

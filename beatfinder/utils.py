@@ -131,15 +131,17 @@ def measures(tn, fp, fn, tp):
         if tp != 0:
             F = 2 * p * r / (p + r) # F-measure
         else:
-            F = 0
+            F = np.nan
     else:
-        p = 0
-        r = 0
-        F = 0
+        p = np.nan
+        r = np.nan
+        F = np.nan
     return a, p, r, F
 
 def F_measure(ground_truth, prediction, d=0.07):
     if len(ground_truth) == 0:
+        return None
+    if len(prediction) == 0:
         return None
     
     dists = np.abs(prediction[:, np.newaxis] - ground_truth)

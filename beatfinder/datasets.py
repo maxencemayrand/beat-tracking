@@ -20,19 +20,21 @@ class AudioBeats(object):
                  offset,
                  duration,
                  length,
+                 song_duration,
                  name):
-        self.audio_file  = audio_file
-        self.beats_file  = beats_file
-        self.spec_file   = spec_file
-        self.onsets_file = onsets_file
-        self.stretch     = stretch
-        self.offset      = offset     # starting point (in seconds) on the stretched wav file.
-        self.duration    = duration   # duration in seconds
-        self.length      = length     # same as duration, but is samples
-        self.name        = name
+        self.audio_file    = audio_file
+        self.beats_file    = beats_file
+        self.spec_file     = spec_file
+        self.onsets_file   = onsets_file
+        self.stretch       = stretch
+        self.offset        = offset     # starting point (in seconds) on the stretched wav file.
+        self.duration      = duration   # duration in seconds
+        self.length        = length     # same as duration, but is samples
+        self.song_duration = song_duration # total duration of the stretched wav
+        self.name          = name
 
     def get_wav(self):
-        if self.stretch:
+        if self.stretch != 1:
             offset = self.offset / self.stretch
             duration = self.duration / self.stretch
             unstretched_wav = librosa.load(self.audio_file, sr=constants.sr, offset=offset, duration=duration)[0]
@@ -49,9 +51,7 @@ class AudioBeats(object):
         return wav
     
     def get_beats(self):
-        all_beats = np.loadtxt(self.beats_file)
-        if self.stretch:
-            all_beats *= self.stretch
+        all_beats = np.loadtxt(self.beats_file) * self.stretch
         mask = (self.offset <= all_beats) & (all_beats < self.offset + self.duration)
         beats = all_beats[mask] - self.offset
         return beats
@@ -91,11 +91,17 @@ class AudioBeats(object):
         beats = self.get_beats()
         return spec, onsets, isbeat, beats
     
+    def augment(self, stretch_low=2/3, stretch_high=4/3):
+        self.stretch = stretch_low + np.random.rand() * (stretch_high - stretch_low)
+        self.offset  = np.random.rand() * (self.song_duration - self.duration)
     
 class AudioBeatsDataset(Dataset):
     
-    def __init__(self, audiobeats_list, transform=None):
-        self.audiobeats_list = audiobeats_list
+    def __init__(self, audiobeats_list=None, transform=None, file=None):
+        if audiobeats_list:
+            self.audiobeats_list = audiobeats_list
+        elif file:
+            self.audiobeats_list = self.load(file)
         self.transform = transform
     
     def __len__(self):
@@ -107,6 +113,9 @@ class AudioBeatsDataset(Dataset):
             return self.transform(audiobeats)
         else:
             return audiobeats
+        
+    def __add__(self, other):
+        return ConcatAudioBeatsDataset([self, other])
 
     def precompute(self, mode='all'):
         for j, audiobeats in enumerate(self):
@@ -122,8 +131,44 @@ class AudioBeatsDataset(Dataset):
             t = time.time() - t
             eta = str(datetime.timedelta(seconds=int(t * (len(self) - j - 1))))
             print(f'\r{100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}' + 20 * ' ', end='')
+    
+    def save(self, file):
+        df = pd.DataFrame()
+        df['audio_file'] = [self.audiobeats_list[i].audio_file for i in range(len(self))]
+        df['beats_file'] = [self.audiobeats_list[i].beats_file for i in range(len(self))]
+        df['spec_file'] = [self.audiobeats_list[i].spec_file for i in range(len(self))]
+        df['onsets_file'] = [self.audiobeats_list[i].onsets_file for i in range(len(self))]
+        df['stretch'] = [self.audiobeats_list[i].stretch for i in range(len(self))]
+        df['offset'] = [self.audiobeats_list[i].offset for i in range(len(self))]
+        df['duration'] = [self.audiobeats_list[i].duration for i in range(len(self))]
+        df['length'] = [self.audiobeats_list[i].length for i in range(len(self))]
+        df['song_duration'] = [self.audiobeats_list[i].song_duration for i in range(len(self))]
+        df['name'] = [self.audiobeats_list[i].name for i in range(len(self))]
+        df.to_csv(file)
 
-            
+    def load(self, file):
+        df = pd.read_csv(file, index_col=0)
+        audiobeats_list = []
+        for i in range(len(df)):
+            audio_file    = df['audio_file'][i]
+            beats_file    = df['beats_file'][i]
+            spec_file     = df['spec_file'][i]
+            onsets_file   = df['onsets_file'][i]
+            stretch       = df['stretch'][i]
+            offset        = df['offset'][i]
+            duration      = df['duration'][i]
+            length        = df['length'][i]
+            song_duration = df['song_duration'][i]
+            name          = df['name'][i]
+            audiobeats = AudioBeats(audio_file, beats_file, spec_file, onsets_file, 
+                                    stretch, offset, duration, length, song_duration, name)
+            audiobeats_list.append(audiobeats)
+        return audiobeats_list
+    
+    def augment(self, stretch_low=2/3, stretch_high=4/3):
+        for audiobeats in self.audiobeats_list:
+            audiobeats.augment(stretch_low, stretch_high)
+
 class SubAudioBeatsDataset(AudioBeatsDataset):
     
     def __init__(self, dataset, indices):
@@ -134,13 +179,11 @@ class SubAudioBeatsDataset(AudioBeatsDataset):
 class AudioBeatsDatasetFromSong(AudioBeatsDataset):
     
     def __init__(self, audio_file, beats_file, precomputation_path,
-                 transform=None, duration=10, stretch=None, force_nb_samples=None):
+                 transform=None, duration=10, stretch=1, force_nb_samples=None):
         
         self.audio_file = audio_file
         self.song_name = os.path.splitext(os.path.basename(self.audio_file))[0]
-        self.song_duration = librosa.get_duration(filename=self.audio_file)
-        if stretch:
-            self.song_duration *= stretch
+        self.song_duration = librosa.get_duration(filename=self.audio_file) * stretch
         self.precomputation_path = precomputation_path
         
         length = librosa.time_to_samples(duration, constants.sr)
@@ -165,6 +208,7 @@ class AudioBeatsDatasetFromSong(AudioBeatsDataset):
                                     offset,
                                     duration,
                                     length,
+                                    self.song_duration,
                                     name)
             audiobeats_list.append(audiobeats)
         
@@ -188,7 +232,7 @@ class ConcatAudioBeatsDataset(AudioBeatsDataset):
 class AudioBeatsDatasetFromList(ConcatAudioBeatsDataset):
     
     def __init__(self, audio_files, beats_dir, precomputation_path, 
-                 transform=None, duration=10, stretch=None, force_nb_samples=None):
+                 transform=None, duration=10, stretch=1, force_nb_samples=None):
         
         directory = os.path.dirname(audio_files)
         
@@ -205,17 +249,20 @@ class AudioBeatsDatasetFromList(ConcatAudioBeatsDataset):
         
         super().__init__(datasets)
 
+
         
 class BALLROOM(AudioBeatsDatasetFromList):
-    def __init__(self, precomputation_path, transform=None, duration=10, stretch=None, force_nb_samples=None):
-        audio_files = './data/BALLROOM/BallroomData/allBallroomFiles'
+    def __init__(self, precomputation_path, file_list='allBallroomFiles', 
+                 transform=None, duration=10, stretch=1, force_nb_samples=None):
+        audio_files = './data/BALLROOM/BallroomData/' + file_list
         beats_dir = './data/BALLROOM/beats/'
         super().__init__(audio_files, beats_dir, precomputation_path, transform, duration, stretch, force_nb_samples)
             
             
 class GTZAN(AudioBeatsDatasetFromList):
-    def __init__(self, precomputation_path, transform=None, duration=10, stretch=None, force_nb_samples=None):
-        audio_files = './data/GTZAN/songs_files.txt'
+    def __init__(self, precomputation_path, file_list='songs_files.txt', 
+                 transform=None, duration=10, stretch=1, force_nb_samples=None):
+        audio_files = './data/GTZAN/' + file_list
         beats_dir = './data/GTZAN/beats/'
         super().__init__(audio_files, beats_dir, precomputation_path, transform, duration, stretch, force_nb_samples)
             
