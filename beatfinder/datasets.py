@@ -27,9 +27,9 @@ class AudioBeats(object):
         self.spec_file     = spec_file
         self.onsets_file   = onsets_file
         self.stretch       = stretch
-        self.offset        = offset     # starting point (in seconds) on the stretched wav file.
-        self.duration      = duration   # duration in seconds
-        self.length        = length     # same as duration, but is samples
+        self.offset        = offset        # starting point (in seconds) on the stretched wav file.
+        self.duration      = duration      # duration in seconds
+        self.length        = length        # same as duration, but is samples
         self.song_duration = song_duration # total duration of the stretched wav
         self.name          = name
 
@@ -93,6 +93,7 @@ class AudioBeats(object):
     
     def augment(self, stretch_low=2/3, stretch_high=4/3):
         self.stretch = stretch_low + np.random.rand() * (stretch_high - stretch_low)
+        self.song_duration *= self.stretch
         self.offset  = np.random.rand() * (self.song_duration - self.duration)
     
 class AudioBeatsDataset(Dataset):
