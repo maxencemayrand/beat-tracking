@@ -13,10 +13,13 @@ def load_beats(file):
     return beats
 
 names = []
+g = open('audio_files.txt', 'w')
 with open('BallroomData/allBallroomFiles') as f:
     for line in f.readlines():
         file = line.strip('\n')[2:]
+        g.write(os.path.join('./BallroomData/', file) + '\n')
         names.append(os.path.splitext(os.path.basename(file))[0])
+g.close()
 
 for i, n in enumerate(names):
     annotation_path = f'BallroomAnnotations/{n}.beats'

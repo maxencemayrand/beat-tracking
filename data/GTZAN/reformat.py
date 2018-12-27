@@ -16,7 +16,7 @@ styles = ['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal', '
 
 names = []
 files = []
-f = open('songs_files.txt', 'w')
+f = open('audio_files.txt', 'w')
 for s in styles:
     for n in range(100):
         name = f'{s}.{n:05}'
@@ -28,7 +28,6 @@ f.close()
 
 for i, n in enumerate(names):
     annotation_path = f'rhythm/jams/{n}.wav.jams'
-    print(annotation_path)
     beats = load_beats(annotation_path)
     path = f'{beats_path}{n}.beats'
     np.savetxt(path, beats, fmt='%.5f')
