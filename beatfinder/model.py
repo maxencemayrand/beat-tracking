@@ -22,7 +22,7 @@ class BeatFinder(nn.Module):
                         hidden_size, 
                         num_layers, 
                         bidirectional=True, 
-                        dropout=0.2,
+                        dropout=0.5,
                         batch_first=True)
         self.hid_to_beat = nn.Linear(2 * hidden_size, 2)
         self.hidden = None
@@ -102,12 +102,9 @@ class BeatFinder(nn.Module):
             time_per_epoch = str(datetime.timedelta(seconds=int(t)))
             eta = str(datetime.timedelta(seconds=int(t * (epochs - e - 1))))
             print(f'| {e + 1:{len(str(epochs))}} | ', end='')
-            print(f'TL: {loss:5.3f} | ', end='')
-            print(f'VL: {vloss:5.3f} | ', end='')
-            print(f'TF: {F:.3f} | ', end='')
-            print(f'VF: {vF:.3f} | ', end='')
-            print(f'TA: {a:.3f} | ', end='')
-            print(f'VA: {va:.3f} | ', end='')
+            print(f'L: {loss:5.3f} {vloss:5.3f} | ', end='')
+            print(f'F: {F:.3f} {vF:.3f} | ', end='')
+            print(f'A: {a:.3f} {va:.3f} | ', end='')
             print(f'{t / len(dataloader):.2f} s/b | {time_per_epoch} | ETA: {eta} |')
         return train_hist, valid_hist
     
@@ -117,7 +114,7 @@ class BeatFinder(nn.Module):
             output = self(specs)
             output = output[onsets == 1]
             pred_t = torch.argmax(output, dim=1)
-            onsets_frames = np.argwhere(onsets.squeeze(0) == 1).squeeze(0)
+            onsets_frames = np.argwhere(onsets.squeeze(0).cpu() == 1).squeeze(0)
             beats_frames = onsets_frames[pred_t == 1]
             pred = torch.zeros_like(onsets)
             pred[:, beats_frames] = 1

@@ -118,7 +118,8 @@ class AudioBeatsDataset(Dataset):
     def __add__(self, other):
         return ConcatAudioBeatsDataset([self, other])
 
-    def precompute(self, mode='all'):
+    def precompute(self, mode='all', verbose=True):
+        hist = np.array([0, 0, 0])
         for j, audiobeats in enumerate(self):
             t = time.time()
             if mode == 'all':
@@ -130,8 +131,15 @@ class AudioBeatsDataset(Dataset):
             else:
                 raise ValueError('Unknown mode')
             t = time.time() - t
+            hist[j % 3] = t
+            if j >= 2:
+                t = hist.mean()
             eta = str(datetime.timedelta(seconds=int(t * (len(self) - j - 1))))
-            print(f'\r{100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}' + 20 * ' ', end='')
+            print(f' {100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}', end='')
+            if verbose:
+                print()
+            else:
+                print(20 * ' ' + '\r')
 
     def save(self, file):
         path = os.path.dirname(file)

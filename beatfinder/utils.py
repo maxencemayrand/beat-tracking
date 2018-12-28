@@ -176,7 +176,7 @@ def predict_beats(model, audiobeats, totensor, tightness=300):
     spec_tensor = spec_tensor.unsqueeze(0)
     onsets_tensor = onsets_tensor.unsqueeze(0)
     onsets, _ = audiobeats.get_onsets_and_isbeat()
-    isbeat_pred = model.predict(spec_tensor, onsets_tensor).numpy().flatten()[onsets]
+    isbeat_pred = model.predict(spec_tensor, onsets_tensor).cpu().numpy().flatten()[onsets]
     beats_frames = onsets[isbeat_pred == 1]
     if len(beats_frames) == 0:
         predicted_beats = np.array([], dtype=np.float32)
@@ -197,10 +197,10 @@ def F_measure_from_dataset(model, dataset, totensor):
         beats = audiobeats.get_beats()
         F = F_measure(beats, predicted_beats)
         if F == None:
-            print(f'{i:2d} :  NaN | ', end='')
+            print(f'{i:3d} :  NaN | ', end='')
             F_nan += 1
         else:
-            print(f'{i:2d} : {F:.2f} | ', end='')
+            print(f'{i:3d} : {F:.2f} | ', end='')
             F_sum += F
         if (i + 1) % 8 == 0:
             print()
