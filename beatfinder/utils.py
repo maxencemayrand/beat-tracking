@@ -78,8 +78,9 @@ def bpm_estimation(beats_frames, max_dev=constants.dt, show_plot=True):
 def ground_truth_bpm(beats):
     return 60 / (beats[1:] - beats[:-1]).mean()
 
-def beat_track(onsets, tightness=300):
-    bpm = bpm_estimation(onsets, show_plot=False)
+def beat_track(onsets, tightness=300, bpm=None):
+    if not bpm:
+        bpm = bpm_estimation(onsets, show_plot=False)
     max_frame = onsets.max() + 10
     fft_res = constants.sr / constants.hl
     period = round(60.0 * fft_res / bpm)
@@ -104,17 +105,15 @@ def beat_track(onsets, tightness=300):
     
     return beats_times, bpm
 
-def correct_beats(onsets, beats):
+def correct_beats(onsets, beats, tightness=500):
     bpm = ground_truth_bpm(beats)
     onsets_times = librosa.frames_to_time(onsets, constants.sr, constants.hl)
-    selected_idxs = preprocessing.select_onsets(onsets_times, beats)
+    selected_idxs = select_onsets(onsets_times, beats)
     selected_onsets = onsets[selected_idxs]
-    selected_onsets_times = onsets_times[selected_idxs]
     
-    corrected_beats = beat_tracker(selected_onsets, onsets.max() + 10, bpm, 500)
-    corrected_beats_times = librosa.frames_to_time(corrected_beats, constants.sr, constants.hl)
+    corrected_beats = beat_track(selected_onsets, tightness=tightness, bpm=bpm)[0]
     
-    return corrected_beats_times
+    return corrected_beats
 
 def correct_isbeat(onsets, corrected_beats):
     onsets_times = librosa.frames_to_time(onsets, constants.sr, constants.hl)

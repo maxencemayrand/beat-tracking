@@ -96,6 +96,18 @@ class AudioBeats(object):
         self.song_duration *= self.stretch
         self.offset  = np.random.rand() * (self.song_duration - self.duration)
 
+    def correct(self, tightness=500):
+        spec, onsets, isbeat, beats = self.get_data()
+        corrected_beats  = utils.correct_beats(onsets, beats)
+        onsets, isbeat = utils.onsets_and_isbeat(spec, corrected_beats)
+        utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat)
+        
+    def predicted_beats(self, tightness=300):
+        onsets, isbeat = self.get_onsets_and_isbeat()
+        beats = utils.beat_track(onsets[isbeat == 1], tightness)
+        return beats
+    
+        
 class AudioBeatsDataset(Dataset):
 
     def __init__(self, audiobeats_list=None, transform=None, file=None):
@@ -118,7 +130,7 @@ class AudioBeatsDataset(Dataset):
     def __add__(self, other):
         return ConcatAudioBeatsDataset([self, other])
 
-    def precompute(self, mode='all', verbose=True):
+    def precompute(self, mode='all'):
         hist = np.array([0, 0, 0])
         for j, audiobeats in enumerate(self):
             t = time.time()
@@ -135,11 +147,7 @@ class AudioBeatsDataset(Dataset):
             if j >= 2:
                 t = hist.mean()
             eta = str(datetime.timedelta(seconds=int(t * (len(self) - j - 1))))
-            print(f' {100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}', end='')
-            if verbose:
-                print()
-            else:
-                print(20 * ' ' + '\r')
+            print(f' {100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}' + 20 * ' ', end='\r')
 
     def save(self, file):
         path = os.path.dirname(file)
@@ -180,7 +188,21 @@ class AudioBeatsDataset(Dataset):
     def augment(self, stretch_low=2/3, stretch_high=4/3):
         for audiobeats in self.audiobeats_list:
             audiobeats.augment(stretch_low, stretch_high)
-
+    
+    def correct(self, tightness=500):
+        for audiobeats in self.audiobeats_list:
+            audiobeats.correct(tightness)
+   
+    def clean(self, d=0.08, tightness=300):
+        new_list = []
+        for audiobeats in self.audiobeats_list:
+            ground_truth    = audiobeats.get_beats()
+            correction, bpm = audiobeats.predicted_beats(tightness=tightness)
+            F = utils.F_measure(ground_truth, correction, d=d)
+            if F > 0.9:
+                new_list.append(audiobeats)
+        self.audiobeats_list = new_list
+            
 class SubAudioBeatsDataset(AudioBeatsDataset):
 
     def __init__(self, dataset, indices):
