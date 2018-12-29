@@ -1,2 +1,2 @@
-# Beat tracking
-Beat tracking algorithm using RNNs.
+# BeatFinder
+Improves beat tracking algorithms with a recurrent neural network.
