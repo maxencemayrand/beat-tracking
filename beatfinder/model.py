@@ -11,11 +11,22 @@ from . import utils
 from . import constants
 
 class BeatFinder(nn.Module):
-    """A recurrent neural network to predict which onsets in a piece of music are beats. These onsets are then used to generate a beat track with a standard beat tracking algorithm. The preselection made by the neural network helps the beat tracking algorithm generate beats that are closer to the ground truth.
+    """A recurrent neural network to predict which onsets in a piece of music
+    are beats. These onsets are then used to generate a beat track with a
+    standard beat tracking algorithm. The preselection made by the neural
+    network helps the beat tracking algorithm generate beats that are closer to
+    the ground truth.
 
-    The recurrent neural network is a binary classifier which takes as input a time slice of the spectrogram of the audio and try to predict if it is a beat. The architecture is a sequence of LSTM cells (3 by default) followed by a fully connected layer with 2 outputs. The loss is only computed on the onsets.
+    The recurrent neural network is a binary classifier which takes as input a
+    time slice of the spectrogram of the audio and try to predict if it is a
+    beat. The architecture is a sequence of LSTM cells (3 by default) followed
+    by a fully connected layer with 2 outputs. The loss is only computed on the
+    onsets.
 
-    In summary, it takes as input a spectrogram of the audio (viewed as a time series of 1d arrays of frequencies), a list of which time slices in the spectrogram are onsets, and it tries to predict which of those onsets are beats.
+    In summary, it takes as input a spectrogram of the audio (viewed as a time
+    series of 1d arrays of frequencies), a list of which time slices in the
+    spectrogram are onsets, and it tries to predict which of those onsets are
+    beats.
     """
 
     def __init__(self, hidden_size=256, num_layers=3, lr=0.0005):
@@ -57,7 +68,9 @@ class BeatFinder(nn.Module):
             p['lr'] = lr
 
     def learn(self, specs, onsets, isbeat):
-        """Makes one step of the optimizer and returns the loss and the true/false positives/negatives. The loss is computed with binary cross entropy only on the inputs that are onsets.
+        """Makes one step of the optimizer and returns the loss and the true/
+        false positives/negatives. The loss is computed with binary cross
+        entropy only on the inputs that are onsets.
 
         Arguments:
             spec (numpy array): Spectrogram of the audio sample.
