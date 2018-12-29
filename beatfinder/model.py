@@ -12,7 +12,7 @@ from . import constants
 
 class BeatFinder(nn.Module):
     
-    def __init__(self, hidden_size=256, num_layers=3):
+    def __init__(self, hidden_size=256, num_layers=3, lr=0.0005):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -22,15 +22,17 @@ class BeatFinder(nn.Module):
                         hidden_size, 
                         num_layers, 
                         bidirectional=True, 
-                        dropout=0.5,
+                        dropout=0.2,
                         batch_first=True)
         self.hid_to_beat = nn.Linear(2 * hidden_size, 2)
         self.hidden = None
         
         self.loss_function = nn.NLLLoss()
         
-        self.lr = 0.001
-        self.optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-5)
+        self.lr = lr
+        #self.optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-5)
+        self.optimizer = optim.Adam(self.parameters(), lr=self.lr, eps=1e-6, weight_decay=1e-5, amsgrad=True)
+        #self.optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=0.9, nesterov=True)
 
     def forward(self, spec):
         x = self.lstm(spec)[0]
@@ -78,16 +80,20 @@ class BeatFinder(nn.Module):
             loss = loss.item()
         return tn, fp, fn, tp, loss
     
-    def fit(self, dataset, validset, batch_size=1, epochs=1):
+    def fit(self, dataset, validset, batch_size=1, epochs=1, early_stop=None):
         len_dataloader = -(-len(dataset) // batch_size)  # quick ceiling function
         train_hist = np.zeros((epochs, len_dataloader, 5))
         valid_hist = np.zeros((epochs, 5))
+        stop_epochs = False
         for e in range(epochs):
             start = time.time()
             dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
             for i, (spec, onsets, isbeat) in enumerate(dataloader):
                 tn, fp, fn, tp, loss = self.learn(spec, onsets, isbeat)
                 train_hist[e, i] = np.array([tn, fp, fn, tp, loss])
+                if early_stop and i >= 20 and train_hist[e, i - 20: i, 4].mean() < early_stop:
+                    stop_epochs = True
+                    break
             
             vtn, vfp, vfn, vtp, vloss = self.evaluate_from_dataset(validset)
             valid_hist[e] = np.array([vtn, vfp, vfn, vtp, vloss])
@@ -106,6 +112,9 @@ class BeatFinder(nn.Module):
             print(f'F: {F:.3f} {vF:.3f} | ', end='')
             print(f'A: {a:.3f} {va:.3f} | ', end='')
             print(f'{t / len(dataloader):.2f} s/b | {time_per_epoch} | ETA: {eta} |')
+            if stop_epochs:
+                print(f'Early stop at minibatch {i}')
+                break
         return train_hist, valid_hist
     
     def predict(self, specs, onsets):

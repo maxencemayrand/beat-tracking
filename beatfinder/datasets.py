@@ -104,8 +104,11 @@ class AudioBeats(object):
         
     def predicted_beats(self, tightness=300):
         onsets, isbeat = self.get_onsets_and_isbeat()
-        beats = utils.beat_track(onsets[isbeat == 1], tightness)
-        return beats
+        beats_frames = onsets[isbeat == 1]
+        if len(beats_frames) == 0 or len(beats_frames) == 1:
+            return librosa.frames_to_time(beats_frames, constants.sr, constants.hl), np.nan
+        beats, bpm = utils.beat_track(onsets[isbeat == 1], tightness)
+        return beats, bpm
     
         
 class AudioBeatsDataset(Dataset):
@@ -131,7 +134,6 @@ class AudioBeatsDataset(Dataset):
         return ConcatAudioBeatsDataset([self, other])
 
     def precompute(self, mode='all'):
-        hist = np.array([0, 0, 0])
         for j, audiobeats in enumerate(self):
             t = time.time()
             if mode == 'all':
@@ -143,9 +145,6 @@ class AudioBeatsDataset(Dataset):
             else:
                 raise ValueError('Unknown mode')
             t = time.time() - t
-            hist[j % 3] = t
-            if j >= 2:
-                t = hist.mean()
             eta = str(datetime.timedelta(seconds=int(t * (len(self) - j - 1))))
             print(f' {100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}' + 20 * ' ', end='\r')
 
@@ -190,17 +189,19 @@ class AudioBeatsDataset(Dataset):
             audiobeats.augment(stretch_low, stretch_high)
     
     def correct(self, tightness=500):
-        for audiobeats in self.audiobeats_list:
+        for i, audiobeats in enumerate(self.audiobeats_list):
             audiobeats.correct(tightness)
+            print(f'{i+1}/{len(self)}', end='\r')
    
     def clean(self, d=0.08, tightness=300):
         new_list = []
-        for audiobeats in self.audiobeats_list:
+        for i, audiobeats in enumerate(self.audiobeats_list):
             ground_truth    = audiobeats.get_beats()
             correction, bpm = audiobeats.predicted_beats(tightness=tightness)
             F = utils.F_measure(ground_truth, correction, d=d)
-            if F > 0.9:
+            if (F != None) and F > 0.9:
                 new_list.append(audiobeats)
+            print(f'{i+1}/{len(self)}', end='\r')
         self.audiobeats_list = new_list
             
 class SubAudioBeatsDataset(AudioBeatsDataset):
@@ -230,7 +231,7 @@ class AudioBeatsDatasetFromSong(AudioBeatsDataset):
 
         audiobeats_list = []
         for i in range(nb_samples):
-            name = f'{self.song_name}.{i:03}'
+            name = f'{self.song_name}.{i:03d}'
             spec_file = os.path.join(self.precomputation_path, f'specs/{name}.npy')
             onsets_file = os.path.join(self.precomputation_path, f'onsets/{name}.csv')
             offset = i * duration

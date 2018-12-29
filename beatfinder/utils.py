@@ -106,11 +106,18 @@ def beat_track(onsets, tightness=300, bpm=None):
     return beats_times, bpm
 
 def correct_beats(onsets, beats, tightness=500):
+    if len(beats) == 0 or len(beats) == 1:
+        return beats
     bpm = ground_truth_bpm(beats)
     onsets_times = librosa.frames_to_time(onsets, constants.sr, constants.hl)
     selected_idxs = select_onsets(onsets_times, beats)
-    selected_onsets = onsets[selected_idxs]
     
+    if len(selected_idxs) == 0:
+        return np.array([], dtype=beats.dtype)
+    if len(selected_idxs) == 1:
+        return onsets_times[selected_idxs]
+    
+    selected_onsets = onsets[selected_idxs]
     corrected_beats = beat_track(selected_onsets, tightness=tightness, bpm=bpm)[0]
     
     return corrected_beats
@@ -205,3 +212,36 @@ def F_measure_from_dataset(model, dataset, totensor):
             print()
 
     return F_sum / (len(dataset) - F_nan), F_nan
+
+def F_measure_with_librosa_comparison(model, dataset, totensor):
+    F_model_sum = 0
+    F_model_nan = 0
+    F_libro_sum = 0
+    F_libro_nan = 0
+    for i, audiobeats in enumerate(dataset):
+        beats_frames, predicted_beats, bpm = predict_beats(model, audiobeats, totensor)
+        beats = audiobeats.get_beats()
+        F_model = F_measure(beats, predicted_beats)
+        if F_model == None:
+            print(f'{i:3d} |   NaN ', end='')
+            F_model_nan += 1
+        else:
+            print(f'{i:3d} | {F_model:.3f} ', end='')
+            F_model_sum += F_model
+        
+        spec = audiobeats.get_spec()
+        onset_env = librosa.onset.onset_strength(S=spec)
+        bpm, beats_frames = librosa.beat.beat_track(onset_envelope=onset_env)
+        librosa_beats = librosa.frames_to_time(beats_frames, constants.sr, constants.hl)
+        F_libro = F_measure(beats, librosa_beats)
+        if F_libro == None:
+            print(f'  NaN ')
+            F_libro_nan += 1
+        else:
+            print(f' {F_libro:.3f}')
+            F_libro_sum += F_libro
+    
+    F_model = F_model_sum / (len(dataset) - F_model_nan)
+    F_libro = F_libro_sum / (len(dataset) - F_libro_nan)
+    
+    return F_model, F_model_nan, F_libro, F_libro_nan
