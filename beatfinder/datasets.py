@@ -10,7 +10,7 @@ from . import utils
 from . import constants
 
 class AudioBeats(object):
-    """Basic class to represent a sample point.
+    r"""Basic class to represent a sample point.
 
     An `AudioBeats` object doesn't contain any data, but points to the right
     files and has many useful methods to precompute some of the data. They are
@@ -75,7 +75,7 @@ class AudioBeats(object):
         self.name          = name
 
     def get_wav(self):
-        """Returns a numpy array of the audio section at the sampling rate
+        r"""Returns a numpy array of the audio section at the sampling rate
         determined by the `constants` module."""
 
         # Only computes the streching if `self.stretch` is different than 1 as
@@ -106,7 +106,7 @@ class AudioBeats(object):
         return wav
 
     def get_beats(self):
-        """Returns a numpy array of the beats in seconds.
+        r"""Returns a numpy array of the beats in seconds.
         """
 
         all_beats = np.loadtxt(self.beats_file) * self.stretch
@@ -115,7 +115,8 @@ class AudioBeats(object):
         return beats
 
     def precompute_spec(self):
-        """Compute the mel-scaled spectrograms and store it in `self.spec_file`.
+        r"""Compute the mel-scaled spectrograms and store it in
+        `self.spec_file`.
         """
 
         path = os.path.dirname(self.spec_file)
@@ -125,13 +126,13 @@ class AudioBeats(object):
         np.save(self.spec_file, spec)
 
     def get_spec(self):
-        """Returns the mel-scaled spectrogram (it must have been precomputed
+        r"""Returns the mel-scaled spectrogram (it must have been precomputed
         beforehand by calling `precompute_spec()` or `precompute()`)."""
 
         return np.load(self.spec_file)
 
     def precompute_onsets_and_isbeat(self):
-        """Computes the onsets from the spectrogram and select which ones are
+        r"""Computes the onsets from the spectrogram and select which ones are
         beats. Then stores the result in `self.onsets_file`. Only works if
         `precompute_spec()` has been called before.
         """
@@ -154,7 +155,7 @@ class AudioBeats(object):
         utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat)
 
     def get_onsets_and_isbeat(self):
-        """Returns the onsets (in frames) and an array of 0/1 saying whether
+        r"""Returns the onsets (in frames) and an array of 0/1 saying whether
         each onset is a beat. The method `precompute_onsets_and_isbeat` must
         have been called at some point before.
         """
@@ -165,14 +166,14 @@ class AudioBeats(object):
         return onsets, isbeat
 
     def precompute(self):
-        """Precomputes the spectrogram, the onsets, and which onsets are beats.
+        r"""Precomputes the spectrogram, the onsets, and which onsets are beats.
         """
 
         self.precompute_spec()
         self.precompute_onsets_and_isbeat()
 
     def get_data(self):
-        """Returns the spectrogram, the onsets (in frames), which onsets are
+        r"""Returns the spectrogram, the onsets (in frames), which onsets are
         beats, and all the beats (in seconds).
 
         Returns:
@@ -187,7 +188,7 @@ class AudioBeats(object):
         return spec, onsets, isbeat, beats
 
     def augment(self, stretch_low=2/3, stretch_high=4/3):
-        """Changes the offset and the stretching of `self` to generate a new
+        r"""Changes the offset and the stretching of `self` to generate a new
         sample. This is usually called for each sample of a whole dataset to do
         data augmentation.
         """
@@ -197,7 +198,7 @@ class AudioBeats(object):
         self.offset  = np.random.rand() * (self.song_duration - self.duration)
 
     def correct(self, tightness=500):
-        """Recompute which onsets are beats by first alligning the ground truth
+        r"""Recompute which onsets are beats by first alligning the ground truth
         on the onsets. This can be useful if there are some misplaced beats.
         """
 
@@ -207,7 +208,7 @@ class AudioBeats(object):
         utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat)
 
     def predicted_beats(self, tightness=300):
-        """Returns the list of beats (in seconds) and the bpm computed from the
+        r"""Returns the list of beats (in seconds) and the bpm computed from the
         onsets (`onsets`) and the subset of those that are beats (`isbeat`).
         This uses a dynamical programming algorithm to compute the beat track on
         the list of onsets that are beats. Once a `BeatFinder` model has been
@@ -230,8 +231,8 @@ class AudioBeats(object):
 
 
 class AudioBeatsDataset(Dataset):
-    """This is the basic dataset class to train `model.BeatFinder`. Each item is
-    an `AudioBeats` object.
+    r"""This is the basic dataset class to train `model.BeatFinder`. Each item
+    is an `AudioBeats` object.
 
     Arguments:
         audiobeats_list (list): A list of AudioBeats objects. An
@@ -267,8 +268,8 @@ class AudioBeatsDataset(Dataset):
         return ConcatAudioBeatsDataset([self, other])
 
     def precompute(self, mode='all'):
-        """Precomputes all the `AudioBeats` objects. This can take a substantial
-        amount of time.
+        r"""Precomputes all the `AudioBeats` objects. This can take a
+        substantial amount of time.
 
         Arguments:
             mode (str): Can be one of the following three choices:
@@ -294,7 +295,7 @@ class AudioBeatsDataset(Dataset):
             print(f' {100*(j+1)/len(self):6.2f}% | ETA: {eta} | {audiobeats.name}' + 20 * ' ', end='\r')
 
     def save(self, file):
-        """Save the dataset in a file. This is saved as a csv-style file where
+        r"""Save the dataset in a file. This is saved as a csv-style file where
         each row stores the information of an `AudioBeats` object (recall that
         those do not contain any actual data, but only link to portions of some
         files.)
@@ -322,7 +323,7 @@ class AudioBeatsDataset(Dataset):
         df.to_csv(file)
 
     def load(self, file):
-        """Returns a list of `AudioBeats` objects stored in `file`.
+        r"""Returns a list of `AudioBeats` objects stored in `file`.
         """
 
         df = pd.read_csv(file, index_col=0)
@@ -344,7 +345,7 @@ class AudioBeatsDataset(Dataset):
         return audiobeats_list
 
     def augment(self, stretch_low=2/3, stretch_high=4/3):
-        """This if for data augmentation. It calls `augment` to each item so
+        r"""This if for data augmentation. It calls `augment` to each item so
         that the new dataset points to randomly stretched and offsetted samples.
         """
 
@@ -352,7 +353,7 @@ class AudioBeatsDataset(Dataset):
             audiobeats.augment(stretch_low, stretch_high)
 
     def correct(self, tightness=500):
-        """Calls the `correct` method on each item. This corrects for misplaced
+        r"""Calls the `correct` method on each item. This corrects for misplaced
         beats in the ground truth.
         """
 
@@ -361,7 +362,7 @@ class AudioBeatsDataset(Dataset):
             print(f'{i+1}/{len(self)}', end='\r')
 
     def clean(self, d=0.08, tightness=300):
-        """This removes certain pathological items from `self`. For each item,
+        r"""This removes certain pathological items from `self`. For each item,
         it computes the beat track from the onsets that are beats, and reject
         the item if this beat track has an F-measure <= 0.9 compared to the
         ground truth. For example, this can happen if almost no onset have been
@@ -379,7 +380,7 @@ class AudioBeatsDataset(Dataset):
         self.audiobeats_list = new_list
 
 class SubAudioBeatsDataset(AudioBeatsDataset):
-    """Subset of an `AudioBeatsDataset` at specified indices.
+    r"""Subset of an `AudioBeatsDataset` at specified indices.
 
     Arguments:
         dataset (AudioBeatsDataset): The original `AudioBeatsDataset`.
@@ -392,7 +393,7 @@ class SubAudioBeatsDataset(AudioBeatsDataset):
 
 
 class AudioBeatsDatasetFromSong(AudioBeatsDataset):
-    """An `AudioBeatsDataset` consisting of equally spaced `AudioBeats` of the
+    r"""An `AudioBeatsDataset` consisting of equally spaced `AudioBeats` of the
     same duration and completely covering a given audio file.
 
     Arguments:
@@ -457,7 +458,7 @@ class AudioBeatsDatasetFromSong(AudioBeatsDataset):
 
 
 class ConcatAudioBeatsDataset(AudioBeatsDataset):
-    """Concatenate multiple `AudioBeatsDataset`s.
+    r"""Concatenate multiple `AudioBeatsDataset`s.
 
     Arguments:
         datasets (list): A list of `AudioBeatsDataset` objects.
@@ -476,7 +477,7 @@ class ConcatAudioBeatsDataset(AudioBeatsDataset):
 
 
 class AudioBeatsDatasetFromList(ConcatAudioBeatsDataset):
-    """An `AudioBeatsDataset` instantiated from a file containing a list of
+    r"""An `AudioBeatsDataset` instantiated from a file containing a list of
     audio files.
 
     Arguments:

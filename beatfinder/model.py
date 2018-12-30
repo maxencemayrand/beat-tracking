@@ -11,7 +11,7 @@ from . import utils
 from . import constants
 
 class BeatFinder(nn.Module):
-    """A recurrent neural network to predict which onsets in a piece of music
+    r"""A recurrent neural network to predict which onsets in a piece of music
     are beats. These onsets are then used to generate a beat track with a
     standard beat tracking algorithm. The preselection made by the neural
     network helps the beat tracking algorithm generate beats that are closer to
@@ -58,7 +58,7 @@ class BeatFinder(nn.Module):
         return x
 
     def set_lr(self, lr):
-        """Set the learning rate of the Adam optimizer.
+        r"""Set the learning rate of the Adam optimizer.
 
         Argument:
             lr (float): learning rate.
@@ -68,7 +68,7 @@ class BeatFinder(nn.Module):
             p['lr'] = lr
 
     def learn(self, specs, onsets, isbeat):
-        """Makes one step of the optimizer and returns the loss and the true/
+        r"""Makes one step of the optimizer and returns the loss and the true/
         false positives/negatives. The loss is computed with binary cross
         entropy only on the inputs that are onsets.
 
@@ -105,7 +105,7 @@ class BeatFinder(nn.Module):
         return tn, fp, fn, tp, loss
 
     def fit(self, dataset, validset, batch_size=1, epochs=1, early_stop=None):
-        """Learn over a whole dataset for multiple epochs.
+        r"""Learn over a whole dataset for multiple epochs.
 
         Arguments:
             dataset (AudioBeatsDataset): Dataset to learn from.
