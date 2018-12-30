@@ -125,10 +125,10 @@ def save_onsets_and_isbeat(file, onsets, isbeat):
         isbeat (1d numpy array): `isbeat[i] = 1` if `onsets[i]` has been
             selected as beat and `0` otherwise.
     """
-        df = pd.DataFrame()
-        df['onsets'] = onsets
-        df['isbeat'] = isbeat
-        df.to_csv(file, index=False)
+    df = pd.DataFrame()
+    df['onsets'] = onsets
+    df['isbeat'] = isbeat
+    df.to_csv(file, index=False)
 
 def bpm_estimation(beats_frames, max_dev=constants.dt, show_plot=True):
     r"""Estimates the BPM (beats per minutes) from a possibly incomplete and
