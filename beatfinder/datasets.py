@@ -131,7 +131,7 @@ class AudioBeats(object):
 
         return np.load(self.spec_file)
 
-    def precompute_onsets_and_isbeat(self):
+    def precompute_onsets_and_isbeat(self, mode='normal'):
         r"""Computes the onsets from the spectrogram and select which ones are
         beats. Then stores the result in `self.onsets_file`. Only works if
         `precompute_spec()` has been called before.
@@ -147,10 +147,17 @@ class AudioBeats(object):
         beats = self.get_beats()
         spec = self.get_spec()
 
-        # This utils function compute the onsets from the spectrogram and
-        # select which ones are beats (within a small interval).
-        onsets, isbeat = utils.onsets_and_isbeat(spec, beats)
-
+        if mode == 'normal':
+            # This utils function compute the onsets from the spectrogram and
+            # select which ones are beats (within a small interval).
+            onsets, isbeat = utils.onsets_and_isbeat(spec, beats)
+        else:
+            onsets = np.arange(spec.shape[1])
+            isbeat = np.zeros_like(onsets)
+            times = librosa.frames_to_time(onsets)
+            dists = np.min(np.abs(times[:, np.newaxis] - beats), axis=1)
+            isbeat[dists < constants.dt] = 1
+        
         # Save on `self.onsets_file`.
         utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat)
 
@@ -228,7 +235,6 @@ class AudioBeats(object):
         beats, bpm = utils.beat_track(onsets[isbeat == 1], tightness)
 
         return beats, bpm
-
 
 class AudioBeatsDataset(Dataset):
     r"""This is the basic dataset class to train `model.BeatFinder`. Each item
