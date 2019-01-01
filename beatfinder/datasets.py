@@ -131,7 +131,7 @@ class AudioBeats(object):
 
         return np.load(self.spec_file)
 
-    def precompute_onsets_and_isbeat(self, mode='normal'):
+    def precompute_onsets_and_isbeat(self, full=False):
         r"""Computes the onsets from the spectrogram and select which ones are
         beats. Then stores the result in `self.onsets_file`. Only works if
         `precompute_spec()` has been called before.
@@ -147,16 +147,17 @@ class AudioBeats(object):
         beats = self.get_beats()
         spec = self.get_spec()
 
-        if mode == 'normal':
+        if full == False:
             # This utils function compute the onsets from the spectrogram and
             # select which ones are beats (within a small interval).
             onsets, isbeat = utils.onsets_and_isbeat(spec, beats)
         else:
             onsets = np.arange(spec.shape[1])
             isbeat = np.zeros_like(onsets)
-            times = librosa.frames_to_time(onsets)
-            dists = np.min(np.abs(times[:, np.newaxis] - beats), axis=1)
-            isbeat[dists < constants.dt] = 1
+            if len(beats) != 0:
+                times = librosa.frames_to_time(onsets, constants.sr, constants.hl)
+                dists = np.min(np.abs(times[:, np.newaxis] - beats), axis=1)
+                isbeat[dists < constants.dt] = 1
         
         # Save on `self.onsets_file`.
         utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat)
@@ -273,7 +274,7 @@ class AudioBeatsDataset(Dataset):
     def __add__(self, other):
         return ConcatAudioBeatsDataset([self, other])
 
-    def precompute(self, mode='all'):
+    def precompute(self, mode='all', full=False):
         r"""Precomputes all the `AudioBeats` objects. This can take a
         substantial amount of time.
 
@@ -291,7 +292,7 @@ class AudioBeatsDataset(Dataset):
             elif mode == 'spec':
                 audiobeats.precompute_spec()
             elif mode == 'onsets_and_isbeat':
-                audiobeats.precompute_onsets_and_isbeat()
+                audiobeats.precompute_onsets_and_isbeat(full)
             else:
                 raise ValueError('Unknown mode')
             t = time.time() - t
