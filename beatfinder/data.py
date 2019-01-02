@@ -255,6 +255,7 @@ class AudioBeats(object):
         utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat_pred)
     
     def showdata(self, duration=None, offset=None, beatfinder=None, device=None, showpred=True):
+        r"""Show the data pointed by self."""
         display.showdata(self, duration, offset, beatfinder, device, showpred)
 
 
@@ -395,6 +396,10 @@ class AudioBeatsDataset(Dataset):
             print(f'{i+1}/{len(self)}', end='\r')
         self.audiobeats_list = new_list
 
+    def copy(self):
+        audiobeats = [self[i].copy() for i in range(len(self))]
+        return AudioBeatsDataset(audiobeats)
+        
 
 def load_dataset(file):
     r"""Return the `AudioBeatsDataset` saved in `file`.
@@ -468,14 +473,24 @@ class AudioBeatsDatasetFromSong(AudioBeatsDataset):
             slightly less or slightly more than 30 seconds we always get 3
             samples (possibly with some zero padding on the right of the last
             one).
+        song_offset (float): Starting point of the unstretched song.
+        song_duration (float): Duration of the unstretched song.
     """
 
     def __init__(self, audio_file, beats_file, precomputation_path,
-                 transform=None, duration=10, stretch=1, force_nb_samples=None):
+                 transform=None, duration=10, stretch=1, force_nb_samples=None,
+                 song_offset=None, song_duration=None):
 
         self.audio_file = audio_file
         self.song_name = os.path.splitext(os.path.basename(self.audio_file))[0]
-        self.song_duration = librosa.get_duration(filename=self.audio_file) * stretch
+        if song_duration:
+            self.song_duration = song_duration * stretch
+        else:
+            self.song_duration = librosa.get_duration(filename=self.audio_file) * stretch
+        if song_offset:
+            self.song_offset = song_offset * stretch
+        else:
+            self.song_offset = 0
         self.precomputation_path = precomputation_path
 
         length = librosa.time_to_samples(duration, constants.sr)
@@ -491,7 +506,7 @@ class AudioBeatsDatasetFromSong(AudioBeatsDataset):
             name = f'{self.song_name}.{i:03d}'
             spec_file = os.path.join(self.precomputation_path, f'specs/{name}.npy')
             onsets_file = os.path.join(self.precomputation_path, f'onsets/{name}.csv')
-            offset = i * duration
+            offset = self.song_offset + i * duration
             audiobeats = AudioBeats(audio_file,
                                     beats_file,
                                     spec_file,
