@@ -8,6 +8,8 @@ import datetime
 
 from . import utils
 from . import constants
+from . import display
+from . import model
 
 class AudioBeats(object):
     r"""Basic class to represent a sample point.
@@ -108,10 +110,12 @@ class AudioBeats(object):
     def get_beats(self):
         r"""Returns a numpy array of the beats in seconds.
         """
-
-        all_beats = np.loadtxt(self.beats_file) * self.stretch
-        mask = (self.offset <= all_beats) & (all_beats < self.offset + self.duration)
-        beats = all_beats[mask] - self.offset
+        if self.beats_file == None:
+            beats = np.array([])
+        else:
+            all_beats = np.loadtxt(self.beats_file) * self.stretch
+            mask = (self.offset <= all_beats) & (all_beats < self.offset + self.duration)
+            beats = all_beats[mask] - self.offset
         return beats
 
     def precompute_spec(self):
@@ -236,7 +240,41 @@ class AudioBeats(object):
         beats, bpm = utils.beat_track(onsets[isbeat == 1], tightness)
 
         return beats, bpm
+    
+    def probabilities(self, beatfinder, device):
+        probs = np.exp(beatfinder(model.ToTensor(device)(self)[0].unsqueeze(0)).cpu().numpy()[0, :, 1])
+        return probs
+    
+    def predict(self, beatfinder, device):
+        r"""Predict which onsets are beat.
+        """
+        self.precompute()
+        probs = self.probabilities(beatfinder, device)
+        onsets, _ = self.get_onsets_and_isbeat()
+        isbeat_pred = (probs[onsets] > 0.5).astype(np.int)
+        utils.save_onsets_and_isbeat(self.onsets_file, onsets, isbeat_pred)
+    
+    def showdata(self, duration=None, offset=None, beatfinder=None, device=None, showpred=True):
+        display.showdata(self, duration, offset, beatfinder, device, showpred)
 
+
+def load(audio_file, offset=None, duration=None, beats_file=None, tmp_dir=None):
+    name = os.path.splitext(os.path.basename(audio_file))[0]
+    if tmp_dir == None:
+        tmp_dir = './tmp/'
+    spec_file = os.path.join(tmp_dir, f'{name}_spec.npy')
+    onsets_file = os.path.join(tmp_dir, f'{name}_onsets.csv')
+    if offset == None:
+        offset = 0
+    if duration == None:
+        duration = librosa.get_duration(filename=audio_file)
+    length = librosa.time_to_samples(duration, constants.sr)
+    song_duration = librosa.get_duration(filename=audio_file)
+    
+    audiobeats = AudioBeats(audio_file, beats_file, spec_file, onsets_file, 1, offset, duration, length, song_duration, name)
+    
+    return audiobeats
+    
 class AudioBeatsDataset(Dataset):
     r"""This is the basic dataset class to train `model.BeatFinder`. Each item
     is an `AudioBeats` object.
@@ -358,7 +396,7 @@ class AudioBeatsDataset(Dataset):
         self.audiobeats_list = new_list
 
 
-def load(file):
+def load_dataset(file):
     r"""Return the `AudioBeatsDataset` saved in `file`.
     
     Argument:
@@ -390,7 +428,6 @@ def load(file):
     dataset = AudioBeatsDataset(audiobeats_list)
     
     return dataset
-        
         
 class SubAudioBeatsDataset(AudioBeatsDataset):
     r"""Subset of an `AudioBeatsDataset` at specified indices.

@@ -5,7 +5,85 @@ import numpy as np
 from . import utils
 from . import constants
 
-def showdata(audiobeats, duration=None, offset=None):
+def showdata(audiobeats, duration=None, offset=None, beatfinder=None, device=None, showpred=True):
+    r"""Displays the data pointed by an AudioBeats object. It shows the onset envelope, 
+    the onsets, the onsets selected as beats, the ground truth beats, and the spectrogram.
+
+    Arguments:
+        audiobeats (AudioBeats): The `AudioBeats` object to display.
+        duration (float): To see a smaller portion of the data, this can be set
+            to a lower value than the duration of `audiobeats`.
+        offset (float): Display only the data starting from `offset` (combine)
+            with `duration` to see a smaller portion of the data).
+        beatfinder (BeatFinder): A model, if available.
+        device (torch.device): The device of the model.
+        showpred (bool): To show the predicted beats.
+    """
+    
+    spec, onsets, isbeat, beats = audiobeats.get_data()
+    if duration == None:
+        duration = audiobeats.duration
+    if offset == None:
+        offset = 0
+
+    if showpred:
+        pred_beats, _ = audiobeats.predicted_beats()
+        
+    onsets_times = librosa.frames_to_time(onsets, constants.sr, constants.hl)
+
+    onsets_selected = onsets[isbeat == 1]
+    onsets_selected_times = librosa.frames_to_time(onsets_selected, constants.sr, constants.hl)
+
+    onset_envelope = utils.onset_strength(spec=spec)
+
+    times = librosa.frames_to_time(np.arange(len(onset_envelope)), constants.sr, constants.hl)
+
+    total_duration = librosa.frames_to_time(spec.shape[1], constants.sr, constants.hl)
+
+    plt.figure(figsize=(16, 8))
+    plt.subplots_adjust(hspace=0)
+
+    plt.subplot(4, 1, 1)
+    if audiobeats.beats_file:
+        plt.vlines(beats, 2, 3, color='g', label='Ground truth')
+        plt.ylim(0, 3)
+    else:
+        plt.ylim(0, 2)
+    if showpred:
+        plt.vlines(pred_beats, 1, 2, color='b', label='Beats predicted')
+        plt.vlines(onsets_selected_times, 0, 1,  color='m', linestyles='-', alpha=1, label='Onsets selected\nas beats')
+    else:
+        plt.vlines(onsets_selected_times, 1, 2,  color='m', linestyles='-', alpha=1, label='Onsets selected\nas beats')
+        plt.ylim(1, 3)
+    plt.xlim(offset, offset + duration)
+    plt.xticks([], [])
+    plt.yticks([], [])
+    plt.legend(frameon=True, framealpha=0.75, bbox_to_anchor=(1.15, 1));
+
+    plt.subplot(4, 1, 2)
+    plt.vlines(onsets_times, 0, 1, color='k', linestyles='--', alpha=0.3, label='Onsets')
+
+    if beatfinder:
+        probs = audiobeats.probabilities(beatfinder, device)
+        plt.vlines(onsets_times, 0, probs[onsets],  color='r', linewidths=7, alpha=0.25, 
+                   label='Probability of the\nonset to be a beat')
+    else:
+        plt.vlines(onsets_selected_times, 0, 1,  color='m', linestyles='--', alpha=1, label='Onsets selected\nas beats')
+    plt.plot(times, onset_envelope, label='Onset envelope')
+    plt.xlim(offset, offset + duration)
+    plt.ylim(0, 1)
+    plt.xticks([], [])
+    plt.legend(frameon=True, framealpha=0.75, bbox_to_anchor=(1.15, 1));
+
+    plt.subplot(2, 1, 2)
+    freq = librosa.mel_frequencies(n_mels=constants.nb, fmin=constants.fm, htk=constants.htk)
+    plt.pcolormesh(times, freq, spec)
+    plt.xlabel('Time [seconds]')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlim(offset, offset + duration)
+
+
+def oldshowdata(audiobeats, duration=None, offset=None):
     r"""Displays the data pointed by an AudioBeats object. It shows the onset envelope, the onsets, the onsets selected as beats, the ground truth beats, and the spectrogram.
 
     Arguments:
@@ -17,6 +95,7 @@ def showdata(audiobeats, duration=None, offset=None):
     """
 
     spec, onsets, isbeat, beats = audiobeats.get_data()
+    pred_beats, _ = audiobeats.predicted_beats()
     if duration == None:
         duration = audiobeats.duration
     if offset == None:
@@ -36,17 +115,24 @@ def showdata(audiobeats, duration=None, offset=None):
     plt.figure(figsize=(16, 8))
 
     plt.subplot(2, 1, 1)
-    plt.plot(times, onset_envelope)
-    plt.vlines(onsets_times, 0, 1, color='b', linestyles='--', alpha=0.75, label='Onsets')
-    plt.vlines(onsets_selected_times, 0.7, 1, color='r', linestyles='-', label='Onsets selected')
-    plt.vlines(beats, 1, 1.3, color='g', label='Ground truth')
-    plt.ylim(0, 1.3)
+    plt.vlines(pred_beats, 1, 1.5, color='b', label='Beats predicted')
+    plt.vlines(onsets_times, 0, 1, color='k', linestyles='--', alpha=0.3, label='Onsets')
+    plt.vlines(onsets_selected_times, 0, 1, color='r', alpha=0.8, linestyles='--', label='Onsets selected')
+    plt.plot(times, onset_envelope, label='Onset envelope')
+    if audiobeats.beats_file:
+        plt.vlines(beats, 1.5, 2, color='g', label='Ground truth')
+        plt.ylim(0, 2)
+    else:
+        plt.ylim(0, 1.5)
     plt.xlim(offset, offset + duration)
     plt.legend(frameon=True, framealpha=0.75, bbox_to_anchor=(1.15, 1));
 
     plt.subplot(2, 1, 2)
     freq = librosa.mel_frequencies(n_mels=constants.nb, fmin=constants.fm, htk=constants.htk)
     plt.pcolormesh(times, freq, spec)
+    plt.title('Spectrogram')
+    plt.xlabel('Time [seconds]')
+    plt.ylabel('Frequency [Hz]')
     plt.xlim(offset, offset + duration);
 
 

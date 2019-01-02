@@ -254,7 +254,15 @@ class BeatFinder(nn.Module):
         for p in self.parameters():
             p.requires_grad = True
 
-
+def load(filename, device):
+    model = BeatFinder()
+    model.load_state_dict(torch.load(filename, map_location=device))
+    model.to(device)
+    model.eval()
+    model.freeze()
+    return model
+    
+            
 class ToTensor(object):
     r"""Callable object to transform an `AudioBeats` object into pytorch
     tensors to feed to `BeatFinder`.
