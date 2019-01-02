@@ -45,12 +45,12 @@ def showdata(audiobeats, duration=None, offset=None, beatfinder=None, device=Non
 
     plt.subplot(4, 1, 1)
     if audiobeats.beats_file:
-        plt.vlines(beats, 2, 3, color='g', label='Ground truth')
+        plt.vlines(beats, 2, 3, color='g', label='Ground truth\nbeats')
         plt.ylim(0, 3)
     else:
         plt.ylim(0, 2)
     if showpred:
-        plt.vlines(pred_beats, 1, 2, color='b', label='Beats predicted')
+        plt.vlines(pred_beats, 1, 2, color='b', label='Predicted beats')
         plt.vlines(onsets_selected_times, 0, 1,  color='m', linestyles='-', alpha=1, label='Onsets selected\nas beats')
     else:
         plt.vlines(onsets_selected_times, 1, 2,  color='m', linestyles='-', alpha=1, label='Onsets selected\nas beats')
