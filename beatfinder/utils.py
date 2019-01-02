@@ -461,3 +461,97 @@ def F_measure_with_librosa_comparison(model, dataset, totensor):
     F_libro = F_libro_sum / (len(dataset) - F_libro_nan)
 
     return F_model, F_model_nan, F_libro, F_libro_nan
+
+
+def tp_fn_fp(ground_truth, predicted_beats, d=0.07):
+    r"""Returns the true positives, false negatives, and false positives of a list of beats.
+
+    Arguments:
+        ground_truth (1d numpy array): The ground truth beats in seconds.
+        predicted_beats (1d numpy array): The predicted beats in seconds.
+        d (float): The maximum distance between two beats to be considered the same.
+
+    Returns:
+        tp (int): True positives.
+        fn (int): False negatives.
+        fp (int): False positives.
+    """
+    if len(ground_truth) == 0 or len(predicted_beats) == 0:
+        tp = 0
+        fn = len(ground_truth)
+        fp = len(predicted_beats)
+    else:
+        dists = np.abs(predicted_beats[:, np.newaxis] - ground_truth)
+        tp = np.sum(np.min(dists, axis=1) < d)
+        fn = np.sum(np.min(dists, axis=0) >= d)
+        fp = np.sum(np.min(dists, axis=1) >= d)
+    
+    return tp, fn, fp
+
+def F(tp, fn, fp):
+    if tp + fp == 0 or tp + fn == 0 or tp == 0:
+        F = np.nan
+    else:
+        p = tp / (tp + fp)      # precision
+        r = tp / (tp + fn)      # recall
+        F = 2 * p * r / (p + r) # F-measure
+    return F
+
+def evaluate_dataset(dataset, model, totensor=None, d=0.07, verbose=False):
+    r"""Returns the true positives, false negatives, and false positives an `AudioBeatsDataset`.
+
+    Arguments:
+        model (BeatFinder): Model used to make the predictions.
+        dataset (AudioBeatsDataset): The dataset to evaluate.
+        totensor (ToTensor): The transform from AudioBeats to pytorch tensors.
+
+    Returns:
+        total_tp (int): True positives.
+        total_fn (int): False negatives.
+        total_fp (int): False positives.
+    """
+    total_tp = 0
+    total_fn = 0
+    total_fp = 0
+    for i, audiobeats in enumerate(dataset):
+        if model=='librosa':
+            spec = audiobeats.get_spec()
+            onset_env = librosa.onset.onset_strength(S=spec)
+            bpm, beats_frames = librosa.beat.beat_track(onset_envelope=onset_env)
+            predicted_beats = librosa.frames_to_time(beats_frames, constants.sr, constants.hl)
+        else:
+            beats_frames, predicted_beats, bpm = predict_beats(model, audiobeats, totensor)
+        
+        ground_truth = audiobeats.get_beats()
+        
+        tp, fn, fp = tp_fn_fp(ground_truth, predicted_beats, d)
+        
+        total_tp += tp
+        total_fn += fn
+        total_fp += fp
+        
+        if verbose:
+            print(f'{i+1:3d}/{len(dataset)} | tp: {tp:3d} | fn: {fn:3d} | fp: {fp:3d}')
+
+    return total_tp, total_fn, total_fp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

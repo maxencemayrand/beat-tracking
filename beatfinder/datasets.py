@@ -248,17 +248,10 @@ class AudioBeatsDataset(Dataset):
         transform (class): A callable class which takes an `AudioBeats` object
             and returns something. In this package, it is always used with
             `model.ToTensor`.
-        file (str): The relative path of a saved `AudioBeatsDataset` object,
-            saved via the method `self.save`. An `AudioBeatsDataset` object can
-            be instantiated with either such a file or with a list of
-            `AudioBeats` objects (see above).
     """
 
-    def __init__(self, audiobeats_list=None, transform=None, file=None):
-        if audiobeats_list:
-            self.audiobeats_list = audiobeats_list
-        elif file:
-            self.audiobeats_list = self.load(file)
+    def __init__(self, audiobeats_list, transform=None):
+        self.audiobeats_list = audiobeats_list
         self.transform = transform
 
     def __len__(self):
@@ -329,28 +322,6 @@ class AudioBeatsDataset(Dataset):
         df['name'] = [self.audiobeats_list[i].name for i in range(len(self))]
         df.to_csv(file)
 
-    def load(self, file):
-        r"""Returns a list of `AudioBeats` objects stored in `file`.
-        """
-
-        df = pd.read_csv(file, index_col=0)
-        audiobeats_list = []
-        for i in range(len(df)):
-            audio_file    = df['audio_file'][i]
-            beats_file    = df['beats_file'][i]
-            spec_file     = df['spec_file'][i]
-            onsets_file   = df['onsets_file'][i]
-            stretch       = df['stretch'][i]
-            offset        = df['offset'][i]
-            duration      = df['duration'][i]
-            length        = df['length'][i]
-            song_duration = df['song_duration'][i]
-            name          = df['name'][i]
-            audiobeats = AudioBeats(audio_file, beats_file, spec_file, onsets_file,
-                                    stretch, offset, duration, length, song_duration, name)
-            audiobeats_list.append(audiobeats)
-        return audiobeats_list
-
     def augment(self, stretch_low=2/3, stretch_high=4/3):
         r"""This if for data augmentation. It calls `augment` to each item so
         that the new dataset points to randomly stretched and offsetted samples.
@@ -386,6 +357,41 @@ class AudioBeatsDataset(Dataset):
             print(f'{i+1}/{len(self)}', end='\r')
         self.audiobeats_list = new_list
 
+
+def load(file):
+    r"""Return the `AudioBeatsDataset` saved in `file`.
+    
+    Argument:
+        file (str): The relative path of a saved `AudioBeatsDataset` object,
+            saved via the method `self.save`. An `AudioBeatsDataset` object can
+            be instantiated with either such a file or with a list of
+            `AudioBeats` objects (see above).
+    Returns:
+        dataset (AudioBeatsDataset): The dataset saved in `file`.
+    """
+    
+    df = pd.read_csv(file, index_col=0)
+    audiobeats_list = []
+    for i in range(len(df)):
+        audio_file    = df['audio_file'][i]
+        beats_file    = df['beats_file'][i]
+        spec_file     = df['spec_file'][i]
+        onsets_file   = df['onsets_file'][i]
+        stretch       = df['stretch'][i]
+        offset        = df['offset'][i]
+        duration      = df['duration'][i]
+        length        = df['length'][i]
+        song_duration = df['song_duration'][i]
+        name          = df['name'][i]
+        audiobeats = AudioBeats(audio_file, beats_file, spec_file, onsets_file,
+                                stretch, offset, duration, length, song_duration, name)
+        audiobeats_list.append(audiobeats)
+        
+    dataset = AudioBeatsDataset(audiobeats_list)
+    
+    return dataset
+        
+        
 class SubAudioBeatsDataset(AudioBeatsDataset):
     r"""Subset of an `AudioBeatsDataset` at specified indices.
 
